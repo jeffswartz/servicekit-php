@@ -1,0 +1,16 @@
+{
+    "name": "opentok/servicekit-php",
+    "description": "An OpenTok Starter Kit for creating a customer service application",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Ankur Oberoi",
+            "email": "aoberoi@gmail.com"
+        }
+    ],
+    "require": {
+        "opentok/opentok": "~2.2",
+        "slim/slim": "~2.4",
+        "php": ">=5.3.2"
+    }
+}
