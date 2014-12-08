@@ -27,7 +27,7 @@
       <div class="container">
         <h1>This Amazing Product</h1>
         <p>Here is a product that your customers need. Naturally, they may have a couple questions. Fortunately, you can use OpenTok to connect them to a representative who can answer those questions, troubleshoot, or help them making a buying decision.</p>
-        <p><a class="btn btn-primary btn-lg" href="#" role="button" data-toggle="modal" data-target="#service-request-modal">Talk to a Representative</a></p>
+        <p><button class="btn btn-primary btn-lg service-request-btn" data-toggle="modal" data-target="#service-request-modal">Talk to a Representative</button></p>
       </div>
     </div>
 
@@ -103,6 +103,8 @@
     <script src="//cdnjs.cloudflare.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
     <script src="//cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.1/js/bootstrap.min.js"></script>
     <script src="//static.opentok.com/webrtc/v2.2/js/opentok.min.js"></script>
+    <script src="/js/vendor/setImmediate.js"></script>
+    <script src="/js/vendor/eventemitter2.js"></script>
     <script src="/js/customer.js"></script>
 </body>
 </html>

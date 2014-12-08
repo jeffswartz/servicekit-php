@@ -1,2 +1,2 @@
-vendor/
-config/development/*.php
+/vendor/
+/config/development/*.php

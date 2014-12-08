@@ -1,17 +1,14 @@
 /* -----------------------------------------------------------------------------------------------
  * Customer Scripts
  * -----------------------------------------------------------------------------------------------*/
-/* global jQuery, _, OT */
-// TODO: how to i explicitly declare dependency on jsPanel?
+/* global jQuery, _, EventEmitter2, setImmediate, OT */
 
 // Prevent leaking into global scope
-!(function(exports, doc, $, _, OT, undefined) {
+!(function(exports, doc, $, _, EventEmitter, setImmediate, OT, undefined) {
 
   // State
   var servicePanel,
-      serviceSession,
-      serviceQueueId,
-      publisher;
+      $serviceRequestButton;
 
   // Service Request Modal and Form
   //
@@ -127,89 +124,115 @@
   }());
 
   // Service Panel
-  var initializeServicePanel = function (serviceSessionData) {
-    var publisherEl = $('#service-panel .publisher'),
-        publisherProperties = {
-          insertMode: 'append',
-          width: '100%',
-          height: '100%',
-          style: {
-            buttonDisplayMode: 'off'
-          }
-        },
-        $waitingHardwareAccess = $('.waiting .hardware-access'),
-        $waitingRepresentative = $('.waiting .representative'),
-        $cancelButton = $('.cancel-button'),
-        apiKey = serviceSessionData.apiKey,
-        sessionId = serviceSessionData.sessionId,
-        token = serviceSessionData.token;
+  var ServicePanel = function (selector, sessionData) {
+    EventEmitter.call(this);
 
-    var servicePublisherAllowed = function() {
-      $waitingHardwareAccess.hide();
-      serviceSession.connect(token);
-      $waitingRepresentative.show();
-    };
+    this.apiKey = sessionData.apiKey;
+    this.sessionId = sessionData.sessionId;
+    this.token = sessionData.token;
 
-    var servicePublisherDenied = function() {
-      // TODO: prompt user to reset their denial of the camera and try again
-    };
+    // currently under the assumption that the DOM elements are already on the page, but it makes
+    // more sense to use a template so this can be instantiated per instance.
+    this.$panel = $(selector);
+    this.$publisher = this.$panel.find('.publisher');
+    this.$waitingHardwareAccess = this.$panel.find('.waiting .hardware-access');
+    this.$waitingRepresentative = this.$panel.find('.waiting .representative');
+    this.$cancelButton = this.$panel.find('.cancel-button');
 
-    var serviceSessionConnected = function() {
-      serviceSession.publish(publisher);
-      $.post('/help/queue', { session_id: sessionId }, 'json')
-        .done(function(data) {
-          // TODO: install a synchronous http request to remove from queue in case the page is
-          // closed
-          serviceQueueId = data.queueId;
-        })
-        .fail(function() {
-          // TODO: error handling
-          // show a flash message that says the request failed, try again later
-        });
-    };
+    setImmediate(this.initialize.bind(this));
+  };
+  ServicePanel.prototype = new EventEmitter();
 
-    var serviceSessionStreamCreated = function(event) {
-      // TODO: subscribe
-      // TODO: change cancel button to end button
-      $waitingRepresentative.hide();
-    };
+  ServicePanel.prototype._videoProperties = {
+    insertMode: 'append',
+    width: '100%',
+    height: '100%',
+    style: {
+      buttonDisplayMode: 'off'
+    }
+  };
 
-    var cancelService = function() {
-      publisher.destroy();
-      servicePanel.hide();
-      if (serviceQueueId) {
-        // TODO: dequeue
-        console.log('dequeue');
-      }
-    };
+  ServicePanel.prototype._publisherAllowed = function() {
+    this.$waitingHardwareAccess.hide();
+    this.$waitingRepresentative.show();
+    this.session.connect(this.token);
+  };
 
-    serviceSession = OT.initSession(apiKey, sessionId);
-    serviceSession.on('sessionConnected', serviceSessionConnected)
-                  .on('streamCreated', serviceSessionStreamCreated);
+  ServicePanel.prototype._publisherDenied = function() {
+    // TODO: prompt user to reset their denial of the camera and try again
+  };
 
-    publisher = OT.initPublisher(publisherEl[0], publisherProperties);
-    publisher.on('accessAllowed', servicePublisherAllowed)
-             .on('accessDenied', servicePublisherDenied);
+  ServicePanel.prototype._sessionConnected = function() {
+    var self = this;
+    this.session.publish(this.publisher);
+    $.post('/help/queue', { session_id: this.sessionId }, 'json')
+      .done(function(data) {
+        // TODO: install a synchronous http request to remove from queue in case the page is
+        // closed
+        self.queueId = data.queueId;
+      })
+      .fail(function() {
+        // TODO: error handling
+        // show a flash message that says the request failed, try again later
+      });
+  };
 
-    $cancelButton.on('click', cancelService);
+  ServicePanel.prototype._streamCreated = function() {
+    // TODO: subscribe
+    // TODO: change cancel button to end button
+    this.$waitingRepresentative.hide();
+  };
 
-    servicePanel.show();
-    $waitingHardwareAccess.show();
+  ServicePanel.prototype.cancel = function() {
+    this.publisher.destroy();
+    this.$panel.hide();
+    if (this.queueId) {
+      // TODO: dequeue
+      console.log('dequeue');
+      this.queueId = undefined;
+    }
 
+    this.emit('close');
+  };
+
+  ServicePanel.prototype.initialize = function() {
+    this.session = OT.initSession(this.apiKey, this.sessionId);
+    this.session.on('sessionConnected', this._sessionConnected, this)
+                .on('streamCreated', this._streamCreated, this);
+
+    this.publisher = OT.initPublisher(this.$publisher[0], this._videoProperties);
+    this.publisher.on('accessAllowed', this._publisherAllowed, this)
+                  .on('accessDenied', this._publisherDenied, this);
+
+    this.$cancelButton.on('click', this.cancel.bind(this));
+    this.$panel.show();
+    this.$waitingHardwareAccess.show();
+
+    this.emit('open');
     // TODO: install a function that stops user from navigating away
   };
 
+  var disableServiceRequest = function() {
+    $serviceRequestButton.prop('disabled', true);
+  };
+
+  var enableServiceRequest = function() {
+    $serviceRequestButton.prop('disabled', false);
+  };
 
   $(doc).ready(function() {
-
-    // TODO: make sure the modal cannot be opened after the service panel is already open
+    $serviceRequestButton = $('.service-request-btn');
     serviceRequest.init('#service-request-modal', function(serviceSessionData) {
-      initializeServicePanel(serviceSessionData);
+      servicePanel = new ServicePanel('#service-panel', serviceSessionData);
+      servicePanel.on('open', disableServiceRequest);
+      servicePanel.on('close', function() {
+        enableServiceRequest();
+        servicePanel.removeAllListeners();
+        servicePanel = undefined;
+      });
     });
-
-    servicePanel = $('#service-panel');
   });
 
   OT.setLogLevel(OT.DEBUG);
 
-}(window, window.document, jQuery, _, OT));
+}(window, window.document, jQuery, _, EventEmitter2, setImmediate, OT));
