@@ -8,84 +8,126 @@
 !(function(exports, doc, $, _, OT, undefined) {
 
   // State
-  var serviceRequestModal,
-      serviceRequestForm,
-      servicePanel,
+  var servicePanel,
       serviceSession,
       serviceQueueId,
       publisher;
 
-  // Service Request Modal Form
-  var validationRequirements = {
-    '.customer-name': {
-      maxLength: 50
-    },
-    '.problem-text': {
-      maxLength: 200
-    }
-  };
-  var requestSubmit = function(event) {
-    var $form = $(event.target),
-        $fields = $form.find('input, textarea'),
-        requestData = $fields.serialize();
-    event.preventDefault();
-    console.log('service request modal form submitted');
+  // Service Request Modal and Form
+  //
+  //
+  // Using a module pattern to encapsulate the functionality. The object returned at the end of this
+  // function presents the API for using this module.
+  //
+  // This code is meant to be treated as a singleton, as there will not be a need for more than one
+  // of these to exist.
+  var serviceRequest = (function() {
+    var $modal, $form, $fields, sessionDataCallback;
 
-    // Helper functions
+    var init = function(modalSelector, callback) {
+      $modal = $(modalSelector);
+      $form = $modal.find('.request-form');
+      $fields = $form.find('input, textarea'),
+      sessionDataCallback = callback;
+
+      $form.submit(submit);
+      $modal.find('.request-submit').click(function() {
+        $form.submit();
+      });
+      $modal.on('hidden.bs.modal', modalHidden);
+    };
+
+    var submit = function(event) {
+      var requestData = $fields.serialize();
+      event.preventDefault();
+
+      disableFields();
+
+      if (validateForm() === false) {
+        enableFields();
+        return;
+      }
+
+      $.post('/help/session', requestData, 'json')
+        .done(function(data) {
+          // TODO: pass requestData too?
+          sessionDataCallback({
+            apiKey: data.apiKey,
+            sessionId: data.sessionId,
+            token: data.token
+          });
+          $modal.hide();
+        })
+        .fail(function() {
+          // TODO: error handling
+          // show a flash message that says the request failed, try again later
+        })
+        .always(function() {
+          enableFields();
+        });
+    };
+
+    var modalHidden = function() {
+      $form[0].reset();
+    };
+
+    var validateForm = function() {
+      var result = true;
+      $form.find('.has-error').removeClass('has-error');
+      $form.find('.validation-error').remove();
+      _.each(validationRequirements, function(requirements, selector) {
+        var $element = $form.find(selector);
+        var $formGroup = $element.parents('.form-group');
+        var value = $element.val();
+        if (_.has(requirements, 'maxLength')) {
+          if (value.length > requirements.maxLength) {
+            $formGroup.addClass('has-error');
+            $formGroup.append(
+              '<span class="help-block validation-error">The maximum length is ' +
+              requirements.maxLength + '</span>'
+            );
+            result = false;
+          }
+        }
+        if (_.has(requirements, 'required')) {
+          if (!value) {
+            $formGroup.addClass('has-error');
+            $formGroup.append(
+              '<span class="help-block validation-error">This field is required</span>'
+            );
+            result = false;
+          }
+        }
+      });
+      return result;
+    };
+
+    var validationRequirements = {
+      '.customer-name': {
+        maxLength: 50,
+        required: true
+      },
+      '.problem-text': {
+        maxLength: 200,
+        required: true
+      }
+    };
+
     var disableFields = function() {
       $fields.prop('disabled', true);
     };
+
     var enableFields = function() {
       $fields.prop('disabled', false);
     };
 
-    disableFields();
-
-    // Validation
-    var validationResult = true;
-
-    $form.find('.has-error').removeClass('has-error');
-    $form.find('.validation-error').remove();
-    _.each(validationRequirements, function(requirements, selector) {
-      var $element = $form.find(selector);
-      var $formGroup = $element.parents('.form-group');
-      var value = $element.val();
-      if (_.has(requirements, 'maxLength')) {
-        if (value.length > requirements.maxLength) {
-          $formGroup.addClass('has-error');
-          $formGroup.append(
-            '<span class="help-block validation-error">The maximum length is ' +
-            requirements.maxLength + '</span>'
-          );
-          validationResult = false;
-        }
-      }
-    });
-
-    if (validationResult === false) {
-      enableFields();
-      return;
-    }
-
-    $.post('/help/session', requestData, 'json')
-      .done(function(data) {
-        initializeServicePanel(data.apiKey, data.sessionId, data.token);
-        serviceRequestModal.hide();
-      })
-      .fail(function() {
-        // TODO: error handling
-        // show a flash message that says the request failed, try again later
-      })
-      .always(function() {
-        enableFields();
-      });
-  };
-  var requestModalHidden = function() {
-    serviceRequestForm[0].reset();
-  };
+    return {
+      init: init
+    };
+  }());
 
   // Service Panel
-  var initializeServicePanel = function (apiKey, sessionId, token) {
+  var initializeServicePanel = function (serviceSessionData) {
     var publisherEl = $('#service-panel .publisher'),
         publisherProperties = {
           insertMode: 'append',
@@ -97,7 +139,10 @@
         },
         $waitingHardwareAccess = $('.waiting .hardware-access'),
         $waitingRepresentative = $('.waiting .representative'),
-        $cancelButton = $('.cancel-button');
+        $cancelButton = $('.cancel-button'),
+        apiKey = serviceSessionData.apiKey,
+        sessionId = serviceSessionData.sessionId,
+        token = serviceSessionData.token;
 
     var servicePublisherAllowed = function() {
       $waitingHardwareAccess.hide();
@@ -156,13 +201,12 @@
 
 
   $(doc).ready(function() {
-    serviceRequestModal = $('#service-request-modal');
-    serviceRequestForm = serviceRequestModal.find('.request-form');
-    serviceRequestForm.submit(requestSubmit);
-    serviceRequestModal.find('.request-submit').click(function() {
-      serviceRequestForm.submit();
+
+    // TODO: make sure the modal cannot be opened after the service panel is already open
+    serviceRequest.init('#service-request-modal', function(serviceSessionData) {
+      initializeServicePanel(serviceSessionData);
     });
-    serviceRequestModal.on('hidden.bs.modal', requestModalHidden);
+
     servicePanel = $('#service-panel');
   });
 
