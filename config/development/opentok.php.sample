@@ -1,0 +1,13 @@
+<?php
+/* -----------------------------------------------------------------------------------------------
+ * OpenTok Development Configuration (Sample)
+ *
+ * This file is meant to be copied without the ".sample" file extension but in the same directory.
+ * After copying, replace the values below with your own API Key and API Secret from the TokBox
+ * Dashboard (https://dashboard.tokbox.com).
+ * -----------------------------------------------------------------------------------------------*/
+
+return array(
+    'key' => 000000,
+    'secret' => 'abcdef1234567890abcdef'
+);

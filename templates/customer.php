@@ -5,6 +5,7 @@
     <title></title>
     <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.1/css/bootstrap.min.css">
     <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.1/css/bootstrap-theme.min.css">
+    <link rel="stylesheet" href="/css/customer.css">
 </head>
 <body>
     <nav class="navbar navbar-inverse navbar-fixed-top" role="navigation">
@@ -57,6 +58,7 @@
       </footer>
     </div> <!-- /container -->
 
+    <!-- Service Request Modal -->
     <div class="modal fade" id="service-request-modal" tabindex="-1" role="dialog" aria-labelledby="service-request-modal-label" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
@@ -68,11 +70,11 @@
                     <form role="form" class="request-form">
                         <div class="form-group">
                             <label for="customer-name" class="control-label">Your Name:</label>
-                            <input type="text" class="form-control customer-name" id="customer-name" required="required">
+                            <input type="text" class="form-control customer-name" name="customer_name" required="required">
                         </div>
                         <div class="form-group">
                             <label for="problem-text" class="control-label">Tell us about your problem:</label>
-                            <textarea class="form-control problem-text" id="problem-text" required="required"></textarea>
+                            <textarea class="form-control problem-text" name="problem_text" required="required"></textarea>
                         </div>
                     </form>
                 </div>
@@ -84,9 +86,23 @@
         </div>
     </div>
 
+    <!-- Service Panel -->
+    <div id="service-panel" class="video-holder">
+        <div class="subscriber"></div>
+        <div class="publisher"></div>
+        <div class="bottom-bar">
+            <button type="button" class="btn btn-danger cancel-button">Cancel</button>
+        </div>
+        <div class="waiting">
+            <p class="hardware-access">Please allow access to your camera and mic.</p>
+            <p class="representative">Waiting for representative...</p>
+        </div>
+    </div>
+
     <script src="//cdnjs.cloudflare.com/ajax/libs/lodash.js/2.4.1/lodash.min.js"></script>
     <script src="//cdnjs.cloudflare.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
     <script src="//cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.1/js/bootstrap.min.js"></script>
+    <script src="//static.opentok.com/webrtc/v2.2/js/opentok.min.js"></script>
     <script src="/js/customer.js"></script>
 </body>
 </html>
