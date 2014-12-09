@@ -5,6 +5,7 @@
     <title></title>
     <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.1/css/bootstrap.min.css">
     <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.1/css/bootstrap-theme.min.css">
+    <link rel="stylesheet" href="/css/common.css">
     <link rel="stylesheet" href="/css/customer.css">
 </head>
 <body>

@@ -24,7 +24,7 @@
     var init = function(modalSelector, callback) {
       $modal = $(modalSelector);
       $form = $modal.find('.request-form');
-      $fields = $form.find('input, textarea'),
+      $fields = $form.find('input, textarea');
       sessionDataCallback = callback;
 
       $form.submit(submit);
@@ -186,6 +186,8 @@
   ServicePanel.prototype.cancel = function() {
     this.publisher.destroy();
     this.$panel.hide();
+    this.$waitingHardwareAccess.hide();
+    this.$waitingRepresentative.hide();
     if (this.queueId) {
       // TODO: dequeue
       console.log('dequeue');

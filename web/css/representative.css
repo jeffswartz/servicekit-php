@@ -1,0 +1,39 @@
+.video-holder {
+  position: relative;
+  min-height: 40em;
+  text-align: center;
+  background-color: #333;
+}
+
+.video-holder.empty {
+  background-color: transparent;
+}
+
+.subscriber,
+.publisher {
+  position: absolute;
+}
+
+.subscriber {
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 40em;
+  z-index: 100;
+}
+
+.publisher {
+  bottom: 1em;
+  right: 1em;
+  width: 20%;
+  height: 10em;
+  z-index: 200;
+  border: 3px solid white;
+  border-radius: 3px;
+}
+
+.access-success,
+.access-error {
+  display: none;
+}
+
