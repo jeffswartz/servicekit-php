@@ -10,22 +10,9 @@ class MemQueue {
     private $name;
     private static $memqTtl = 0;
 
-    public function __construct($name, $pool, $username=null, $password=null) {
-
+    public function __construct($name) {
         $this->name = $name;
-
-        $this->mem = new \Memcached;
-        $this->mem->setOption(\Memcached::OPT_BINARY_PROTOCOL, true);
-
-        $servers = explode(",", $pool);
-        foreach($servers as $server) {
-            list($host, $port) = explode(":", $server);
-            $this->mem->addServer($host, $port);
-        }
-
-        if (!empty($username) && !empty($password)) {
-            $this->mem->setSaslAuthData($username, $password);
-        }
+        $this->mem = MemcachedFactory::getFactory()->getMemcached();
     }
 
     public function isEmpty() {

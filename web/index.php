@@ -8,7 +8,9 @@ use \Slim\Slim;
 use \OpenTok\OpenTok;
 use \werx\Config\Providers\ArrayProvider;
 use \werx\Config\Container;
+use \ServiceKit\MemcachedFactory;
 use \ServiceKit\MemQueue;
+use \ServiceKit\HelpSession;
 
 /* ------------------------------------------------------------------------------------------------
  * Slim Application Initialization
@@ -39,12 +41,8 @@ $opentok = new OpenTok($config->opentok('key'), $config->opentok('secret'));
 /* ------------------------------------------------------------------------------------------------
  * Memcached Initialization
  * -----------------------------------------------------------------------------------------------*/
-$helpQueue = new MemQueue(
-    'helpQueue',
-    $config->memcached('pool'),
-    $config->memcached('username'),
-    $config->memcached('password')
-);
+MemcachedFactory::configureFactory($config->memcached());
+$helpQueue = new MemQueue('helpQueue');
 
 /* ------------------------------------------------------------------------------------------------
  * Routing
@@ -98,14 +96,15 @@ $app->post('/help/session', function () use ($app, $opentok, $config) {
         return;
     }
 
-    // TODO: store the customer_name and problem_text as associated to the session
-
     $session = $opentok->createSession();
     $responseData = array(
         'apiKey' => $config->opentok('key'),
         'sessionId' => $session->getSessionId(),
         'token' => $session->generateToken()
     );
+
+    // TODO: error checking
+    HelpSession::create($session->getSessionId(), $customerName, $problemText);
 
     $app->response->headers->set('Content-Type', 'application/json');
     $app->response->setBody(json_encode($responseData));
@@ -121,11 +120,17 @@ $app->post('/help/queue', function () use ($app, $helpQueue) {
 
     $sessionId = $app->request->params('session_id');
 
-    // TODO: Validation
-    // check to see that the session id exists in the storage
+    // Validation
+    // Check to see that the sessionId exists
+    $helpSession = HelpSession::findBySessionId($sessionId);
+    if ($helpSession == false) {
+        $app->response->setStatus(400);
+        $app->response->setBody('An invalid session_id was given.');
+        return;
+    }
 
     $responseData = array(
-        'queueId' => $helpQueue->enqueue($sessionId)
+        'queueId' => $helpQueue->enqueue($helpSession)
     );
 
     $app->response->headers->set('Content-Type', 'application/json');
