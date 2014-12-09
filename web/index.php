@@ -8,7 +8,7 @@ use \Slim\Slim;
 use \OpenTok\OpenTok;
 use \werx\Config\Providers\ArrayProvider;
 use \werx\Config\Container;
-use \ServiceKit\Memq;
+use \ServiceKit\MemQueue;
 
 /* ------------------------------------------------------------------------------------------------
  * Slim Application Initialization
@@ -37,9 +37,10 @@ $config->load(array('opentok', 'memcached'), true);
 $opentok = new OpenTok($config->opentok('key'), $config->opentok('secret'));
 
 /* ------------------------------------------------------------------------------------------------
- * Memq Initialization
+ * Memcached Initialization
  * -----------------------------------------------------------------------------------------------*/
-$memq = new Memq(
+$helpQueue = new MemQueue(
+    'helpQueue',
     $config->memcached('pool'),
     $config->memcached('username'),
     $config->memcached('password')
@@ -116,7 +117,7 @@ $app->post('/help/session', function () use ($app, $opentok, $config) {
 //
 //    Response: (JSON encoded)
 //    *  `queueId`: An identifier for the session's position in the queue
-$app->post('/help/queue', function () use ($app, $memq) {
+$app->post('/help/queue', function () use ($app, $helpQueue) {
 
     $sessionId = $app->request->params('session_id');
 
@@ -124,7 +125,7 @@ $app->post('/help/queue', function () use ($app, $memq) {
     // check to see that the session id exists in the storage
 
     $responseData = array(
-        'queueId' => $memq->enqueue('helpQueue', $sessionId)
+        'queueId' => $helpQueue->enqueue($sessionId)
     );
 
     $app->response->headers->set('Content-Type', 'application/json');
