@@ -5,10 +5,6 @@
   background-color: #333;
 }
 
-.video-holder.empty {
-  background-color: transparent;
-}
-
 .subscriber,
 .publisher {
   position: absolute;

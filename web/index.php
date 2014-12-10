@@ -98,8 +98,12 @@ $app->post('/help/session', function () use ($app, $opentok, $config) {
         'token' => $session->generateToken()
     );
 
-    // TODO: error checking
-    HelpSession::create($session->getSessionId(), $customerName, $problemText);
+    $success = HelpSession::create($session->getSessionId(), $customerName, $problemText);
+    if ($success == false) {
+        $app->response->setStatus(500);
+        $app->response->setBody('Could not create the help session');
+        return;
+    }
 
     $app->response->headers->set('Content-Type', 'application/json');
     $app->response->setBody(json_encode($responseData));
@@ -124,8 +128,15 @@ $app->post('/help/queue', function () use ($app, $helpQueue) {
         return;
     }
 
+    $queueId = $helpQueue->enqueue($helpSession->getSessionId());
+    if ($queueId == false) {
+        $app->response->setStatus(500);
+        $app->response->setBody('The help session could not be enqueued');
+        return;
+    }
+
     $responseData = array(
-        'queueId' => $helpQueue->enqueue($helpSession)
+        'queueId' => $queueId
     );
 
     $app->response->headers->set('Content-Type', 'application/json');
@@ -150,9 +161,16 @@ $app->post('/help/queue', function () use ($app, $helpQueue) {
 // identity of the request should be verified (often times with session cookies) before a valid 
 // response is given.
 $app->delete('/help/queue', function () use ($app, $helpQueue, $opentok, $config) {
-    $helpSession = $helpQueue->dequeue();
+    $helpSessionId = $helpQueue->dequeue();
 
-    if ($helpSession) {
+    if ($helpSessionId) {
+
+        $helpSession = HelpSession::findBySessionId($helpSessionId);
+        if ($helpSession == false) {
+            $app->response->setStatus(500);
+            $app->response->setBody('The queue is in an invalid state.');
+            return;
+        }
 
         $responseData = array(
             'apiKey' => $config->opentok('key'),
@@ -166,8 +184,12 @@ $app->delete('/help/queue', function () use ($app, $helpQueue, $opentok, $config
         // If keeping the history of this help session is important, we could mark it as dequeued 
         // instead. If we had authentication for the representative, then we could also mark the 
         // help session with the identity of the representative.
-        // TODO: check for success
-        HelpSession::deleteBySessionId($helpSession->getSessionId());
+        $success = HelpSession::deleteBySessionId($helpSession->getSessionId());
+        if ($success == false) {
+            $app->response->setStatus(500);
+            $app->response->setBody('The help session was dequeued but could not be deleted');
+            return;
+        }
 
         $app->response->headers->set('Content-Type', 'application/json');
         $app->response->setBody(json_encode($responseData));
@@ -177,7 +199,18 @@ $app->delete('/help/queue', function () use ($app, $helpQueue, $opentok, $config
     }
 });
 
-// TODO: a user should also be able to dequeue their own session
+// Customer dequeues by cancelling or leaving the page
+//
+// Dequeue the specific help session from the help queue.
+$app->delete('/help/queue/:queueId', function ($queueId) use ($app, $helpQueue) {
+    $success = $helpQueue->delete($queueId);
+    if ($success == false) {
+        $app->response->setStatus(500);
+        return;
+    }
+    $app->response->setStatus(204);
+});
+
 
 
 /* ------------------------------------------------------------------------------------------------

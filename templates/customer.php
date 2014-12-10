@@ -26,8 +26,8 @@
     <!-- Main jumbotron for a primary marketing message or call to action -->
     <div class="jumbotron">
       <div class="container">
-        <h1>This Amazing Product</h1>
-        <p>Here is a product that your customers need. Naturally, they may have a couple questions. Fortunately, you can use OpenTok to connect them to a representative who can answer those questions, troubleshoot, or help them making a buying decision.</p>
+        <h1>Your Amazing Product</h1>
+        <p>Here is a product that your customers need. Naturally, they may have a couple questions. Fortunately, you can use <a href="https://tokbox.com/opentok">OpenTok</a> to connect them to a representative who can answer those questions, troubleshoot, or help them making a buying decision.</p>
         <p><button class="btn btn-primary btn-lg service-request-btn" data-toggle="modal" data-target="#service-request-modal">Talk to a Representative</button></p>
       </div>
     </div>

@@ -141,10 +141,13 @@
     this.$waitingRepresentative = this.$panel.find('.waiting .representative');
     this.$closeButton = this.$panel.find('.close-button');
 
+    // Do this asynchronously so that the 'open' event happens on a separate turn of the event loop
+    // than the instantiation.
     setImmediate(this.initialize.bind(this));
   };
   ServicePanel.prototype = new EventEmitter();
 
+  // Start the UI and communications
   ServicePanel.prototype.initialize = function() {
     this.session = OT.initSession(this.apiKey, this.sessionId);
     this.session.on('sessionConnected', this._sessionConnected, this)
@@ -161,7 +164,6 @@
     this.$waitingHardwareAccess.show();
 
     this.emit('open');
-    // TODO: install a function that stops user from navigating away
   };
 
   ServicePanel.prototype.close = function() {
@@ -181,14 +183,30 @@
     this.publisher.off();
 
     if (this.queueId) {
-      // TODO: dequeue
-      console.log('dequeue');
+      this._dequeue();
     }
 
     this.$panel.hide();
     this.emit('close');
   };
 
+  ServicePanel.prototype._dequeue = function() {
+    $.ajax({
+      type: 'POST',
+      url: '/help/queue/'+this.queueId,
+      data: { '_METHOD' : 'DELETE' },
+      async: false
+    })
+    .done(function(data) {
+      console.log(data);
+    })
+    .always(function() {
+      console.log('dequeue request completed');
+    });
+    exports.onbeforeunload = undefined;
+  };
+
+  // Waits to connect to the session until after the user approves access to camera and mic
   ServicePanel.prototype._publisherAllowed = function() {
     this.$waitingHardwareAccess.hide();
     this.$waitingRepresentative.show();
@@ -205,11 +223,13 @@
     this.connected = true;
     this.session.publish(this.publisher);
 
-    $.post('/help/queue', { session_id: this.sessionId }, 'json')
+    // Once the camera and mic are accessible and the session is connected, join the queue
+    $.post('/help/queue', { 'session_id' : this.sessionId }, 'json')
       .done(function(data) {
-        // TODO: install a synchronous http request to remove from queue in case the page is
-        // closed
         self.queueId = data.queueId;
+
+        // install a synchronous http request to remove from queue in case the page is closed
+        exports.onbeforeunload = self._dequeue.bind(self);
       })
       .fail(function() {
         // TODO: error handling
@@ -223,17 +243,23 @@
   };
 
   ServicePanel.prototype._streamCreated = function(event) {
+    // The representative joins the session
     if (!this.subscriber) {
       this.subscriber = this.session.subscribe(event.stream,
                                                this.$subscriber[0],
                                                this._videoProperties);
       this.$closeButton.text('End');
       this.$waitingRepresentative.hide();
+
+      // Invalidate queueId because if the representative arrived, that means customer has been
+      // dequeued
       this.queueId = undefined;
+      exports.onbeforeunload = undefined;
     }
   };
 
   ServicePanel.prototype._streamDestroyed = function(event) {
+    // If the representative leaves, the call is done
     if (this.subscriber && event.stream === this.subscriber.stream) {
       this.close();
     }

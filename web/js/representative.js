@@ -173,6 +173,7 @@
         })
         .fail(function() {
           // TODO: error handling
+          // prompt user, re enable the get customer button
         });
     };
 
