@@ -33,7 +33,8 @@
 }
 
 .access-success,
-.access-error {
+.access-error,
+.get-customer,
+.end-call {
   display: none;
 }
-

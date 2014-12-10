@@ -19,6 +19,10 @@ class HelpSession {
         return self::memcached()->get(self::KEY_PREFIX . $sessionId);
     }
 
+    public static function deleteBySessionid($sessionId) {
+        return self::memcached()->delete(self::KEY_PREFIX . $sessionId);
+    }
+
     private static function memcached() {
         return MemcachedFactory::getFactory()->getMemcached();
     }

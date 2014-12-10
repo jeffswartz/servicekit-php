@@ -53,7 +53,7 @@
             sessionId: data.sessionId,
             token: data.token
           });
-          $modal.hide();
+          $modal.modal('hide');
         })
         .fail(function() {
           // TODO: error handling
@@ -183,6 +183,9 @@
     this.$waitingRepresentative.hide();
   };
 
+  // TODO: call disconnect and then handle the rest in the session disconnected handler
+  // but its possible they never attempted to connect to the session, then what? call
+  // sessionDisconnected directly?
   ServicePanel.prototype.cancel = function() {
     this.publisher.destroy();
     this.$panel.hide();

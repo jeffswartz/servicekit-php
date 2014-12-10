@@ -58,11 +58,6 @@ $app->get('/rep', function () use ($app) {
     $app->render('representative.php');
 });
 
-// Representative logs in
-$app->post('/login', function () use ($app) {
-});
-
-
 // Customer requests service
 //
 // A) Create a help session
@@ -138,13 +133,52 @@ $app->post('/help/queue', function () use ($app, $helpQueue) {
 
 });
 
-// TODO: a user should also be able to dequeue their own session
-
 // Representative delivers serivce
 //
-// Dequeue from service queue and assign to representative
-$app->delete('/help/queue', function () use ($app) {
+// Dequeue from service queue and assign to representative (FIFO). If there is a customer on the
+// queue, respond with the help session data and additional data needed to connect. If there isn't
+// a customer available on the queue, respond with status code 204 NO CONTENT.
+//
+// Response: (JSON encoded)
+// *  `apiKey`:
+// *  `sessionId`:
+// *  `token`:
+// *  `customerName`:
+// *  `problemText`:
+//
+// NOTE: This request allows anonymous access, but if user authentication is required then the 
+// identity of the request should be verified (often times with session cookies) before a valid 
+// response is given.
+$app->delete('/help/queue', function () use ($app, $helpQueue, $opentok, $config) {
+    $helpSession = $helpQueue->dequeue();
+
+    if ($helpSession) {
+
+        $responseData = array(
+            'apiKey' => $config->opentok('key'),
+            'sessionId' => $helpSession->getSessionId(),
+            'token' => $opentok->generateToken($helpSession->getSessionId()),
+            'customerName' => $helpSession->getCustomerName(),
+            'problemText' => $helpSession->getProblemText()
+        );
+
+        // Once the help session is dequeued, we also clean it out of the storage.
+        // If keeping the history of this help session is important, we could mark it as dequeued 
+        // instead. If we had authentication for the representative, then we could also mark the 
+        // help session with the identity of the representative.
+        // TODO: check for success
+        HelpSession::deleteBySessionId($helpSession->getSessionId());
+
+        $app->response->headers->set('Content-Type', 'application/json');
+        $app->response->setBody(json_encode($responseData));
+
+    } else {
+        $app->response->setStatus(204);
+    }
 });
+
+// TODO: a user should also be able to dequeue their own session
+
 
 /* ------------------------------------------------------------------------------------------------
  * Application Start

@@ -26,31 +26,19 @@ class MemQueue {
         }
     }
 
-    public function dequeue($after_id=false, $till_id=false) {
+    public function dequeue() {
+        $tail = $this->mem->get($this->name . "_tail");
 
-        if ($after_id === false && $till_id === false) {
-            $tail = $this->mem->get($this->name . "_tail");
-            if (($id = $this->mem->increment($this->name."_head")) === false) {
-                return false;
-            }
-
-            if ($id <= $tail) {
-                return $this->mem->get($this->name . "_" . ($id - 1));
-            } else {
-                $this->mem->decrement($this->name . "_head");
-                return false;
-            }
-        } else if ($after_id !== false && $till_id === false) {
-            $till_id = $this->mem->get($this->name . "_tail");
+        if (($id = $this->mem->increment($this->name."_head")) === false) {
+            return false;
         }
 
-        $item_keys = array();
-        for($i = $after_id + 1; $i <= $till_id; $i++) {
-            $item_keys[] = $this->name . "_" . $i;
+        if ($id - 1 <= $tail) {
+            return $this->mem->get($this->name . "_" . ($id - 1));
+        } else {
+            $this->mem->decrement($this->name . "_head");
+            return false;
         }
-        $null = null;
-
-        return $this->mem->getMulti($item_keys, $null, \Memcached::GET_PRESERVE_ORDER);
     }
 
     public function enqueue($item) {

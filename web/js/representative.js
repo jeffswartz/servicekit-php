@@ -1,16 +1,17 @@
 /* -----------------------------------------------------------------------------------------------
  * Representative Scripts
  * -----------------------------------------------------------------------------------------------*/
-/* global jQuery, _, OT */
+/* global jQuery, _, setImmediate, OT */
 
 // Prevent leaking into global scope
-!(function(exports, doc, $, _, OT, undefined) {
+!(function(exports, doc, $, _, setImmediate, OT, undefined) {
 
   // Service Provider Login
   var serviceProviderLogin = (function() {
-    var $modal, $form, $fields, $submit, $accessInfo, $accessSuccess, $accessError, publisher;
+    var $modal, $form, $fields, $submit, $accessInfo, $accessSuccess, $accessError,
+        loginCompleteCallback, publisher;
 
-    var init = function(modalSelector, publisherConfig) {
+    var init = function(modalSelector, publisherConfig, done) {
       $modal = $(modalSelector);
       $form = $modal.find('.login-form');
       $fields = $form.find('input');
@@ -33,10 +34,11 @@
       publisher = OT.initPublisher(publisherConfig.el, publisherConfig.props);
       publisher.on('accessAllowed', publisherAllowed)
                .on('accessDenied', publisherDenied);
+
+      loginCompleteCallback = done;
     };
 
     var submit = function(event) {
-      var requestData = $fields.serialize();
       event.preventDefault();
 
       disableFields();
@@ -45,6 +47,17 @@
         enableFields();
         return;
       }
+
+      // NOTE: There is no authentication implemented for representatives. For that reason, there is
+      // no request sent to the server. The structure of the code is designed such that
+      // authentication can be added at a later time.
+
+      setImmediate(function() {
+        loginCompleteCallback(publisher);
+        $modal.modal('hide');
+        enableFields();
+      });
+
     };
 
     var publisherAllowed = function() {
@@ -116,19 +129,148 @@
     };
   }());
 
+  // Service Provider
+  var serviceProvider = (function() {
+    var $el, $publisher, $subscriber, $getCustomer, $endCall, session, publisher, subscriber, connected;
+
+    var init = function(selector) {
+      $el = $(selector);
+      $publisher = $el.find('.publisher');
+      $subscriber = $el.find('.subscriber');
+      $getCustomer = $el.find('.get-customer');
+      $endCall = $el.find('.end-call');
+
+      $getCustomer.on('click', getCustomer);
+      $endCall.on('click', endCall);
+    };
+
+    var start = function(pub) {
+      $getCustomer.show();
+      publisher = pub;
+      publisher.on('streamDestroyed', function(event) {
+        event.preventDefault();
+        console.log('Publisher stopped streaming.');
+      });
+    };
+
+    var getCustomer = function() {
+      $getCustomer.prop('disabled', true);
+      console.log('requesting customer');
+      $.post('/help/queue', dequeueData, 'json')
+        .done(function(customerData, textStatus, jqXHR) {
+          if (jqXHR.status === 200) {
+            console.log('customer matched');
+            // When there is a customer available, begin chat
+            renderCustomer(customerData);
+            beginCall(customerData);
+
+          } else if (jqXHR.status === 204) {
+            console.log('no customer, will poll');
+            // When there isn't a customer available, poll
+            setTimeout(getCustomer, pollingInterval);
+          }
+        })
+        .fail(function() {
+          // TODO: error handling
+        });
+    };
+
+    var renderCustomer = function(customerData) {
+      console.log('rendering customer name: ' + customerData.customerName);
+      console.log('rendering problem text: ' + customerData.problemText);
+      // TODO templating
+      $getCustomer.hide();
+      $endCall.show();
+    };
+
+    var clearCustomer = function() {
+      // TODO: cleanup templated data
+      $getCustomer.show().prop('disabled', false);
+      $endCall.hide();
+    };
+
+    var beginCall = function(customerData) {
+      session = OT.initSession(customerData.apiKey, customerData.sessionId);
+      session.on('sessionConnected', sessionConnected);
+      session.on('sessionDisconnected', sessionDisconnected);
+      session.on('streamCreated', streamCreated);
+      session.on('streamDestroyed', streamDestroyed);
+      session.connect(customerData.token);
+    };
+
+    var endCall = function() {
+      if (connected) {
+        session.unpublish(publisher);
+        session.disconnect();
+      } else {
+        clearCustomer();
+      }
+    };
+
+    var sessionConnected = function() {
+      // TODO: start a timer within which to wait for the customer's stream to be created
+      console.log('session connected');
+      connected = true;
+      session.publish(publisher);
+    };
+
+    var sessionDisconnected = function() {
+      console.log('session disconnected');
+      connected = false;
+      subscriber.off();
+      subscriber = undefined;
+      session.off();
+      session = undefined;
+      clearCustomer();
+    };
+
+    var streamCreated = function(event) {
+      if (!subscriber) {
+        subscriber = session.subscribe(event.stream, $subscriber[0], videoProperties);
+      }
+    };
+
+    var streamDestroyed = function(event) {
+      if (subscriber && event.stream === subscriber.stream) {
+        endCall();
+      }
+    };
+
+    var publisherConfig = function() {
+      return {
+        el: $publisher[0],
+        props: videoProperties
+      };
+    };
+
+    var videoProperties = {
+      insertMode: 'append',
+      width: '100%',
+      height: '100%',
+      style: {
+        buttonDisplayMode: 'off'
+      }
+    };
+
+    var pollingInterval = 5000;
+
+    var dequeueData = '_METHOD=DELETE';
+
+    return {
+      init: init,
+      publisherConfig: publisherConfig,
+      start: start
+    };
+  }());
+
 
   $(doc).ready(function() {
-    serviceProviderLogin.init('#service-provider-login-modal', {
-      el: $('.publisher')[0],
-      props: {
-        insertMode: 'append',
-        width: '100%',
-        height: '100%',
-        style: {
-          buttonDisplayMode: 'off'
-        }
-      }
-    });
+    serviceProvider.init('#service-provider');
+    serviceProviderLogin.init(
+      '#service-provider-login-modal',
+      serviceProvider.publisherConfig(),
+      serviceProvider.start
+    );
   });
 
-}(window, window.document, jQuery, _, OT));
+}(window, window.document, jQuery, _, setImmediate, OT));
