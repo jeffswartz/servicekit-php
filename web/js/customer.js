@@ -10,14 +10,13 @@
   var servicePanel,
       $serviceRequestButton;
 
-  // Service Request Modal and Form
+  // Service Request
   //
+  // This object controls the interaction with modal and form that the user must fill before
+  // speaking to a representative.
   //
   // Using a module pattern to encapsulate the functionality. The object returned at the end of this
-  // function presents the API for using this module.
-  //
-  // This code is meant to be treated as a singleton, as there will not be a need for more than one
-  // of these to exist.
+  // function presents the API for using this module. It is a singleton and can be reused.
   var serviceRequest = (function() {
     var $modal, $form, $fields, sessionDataCallback;
 
@@ -47,7 +46,6 @@
 
       $.post('/help/session', requestData, 'json')
         .done(function(data) {
-          // TODO: pass requestData too?
           sessionDataCallback({
             apiKey: data.apiKey,
             sessionId: data.sessionId,
@@ -123,33 +121,72 @@
     };
   }());
 
+
   // Service Panel
+  //
+  // This object controls the interaction with a floating panel which is fixed to the bottom right
+  // of the page, where a conversation with the representative is contained.
   var ServicePanel = function (selector, sessionData) {
     EventEmitter.call(this);
 
     this.apiKey = sessionData.apiKey;
     this.sessionId = sessionData.sessionId;
     this.token = sessionData.token;
+    this.connected = false;
 
-    // currently under the assumption that the DOM elements are already on the page, but it makes
-    // more sense to use a template so this can be instantiated per instance.
     this.$panel = $(selector);
     this.$publisher = this.$panel.find('.publisher');
+    this.$subscriber = this.$panel.find('.subscriber');
     this.$waitingHardwareAccess = this.$panel.find('.waiting .hardware-access');
     this.$waitingRepresentative = this.$panel.find('.waiting .representative');
-    this.$cancelButton = this.$panel.find('.cancel-button');
+    this.$closeButton = this.$panel.find('.close-button');
 
     setImmediate(this.initialize.bind(this));
   };
   ServicePanel.prototype = new EventEmitter();
 
-  ServicePanel.prototype._videoProperties = {
-    insertMode: 'append',
-    width: '100%',
-    height: '100%',
-    style: {
-      buttonDisplayMode: 'off'
+  ServicePanel.prototype.initialize = function() {
+    this.session = OT.initSession(this.apiKey, this.sessionId);
+    this.session.on('sessionConnected', this._sessionConnected, this)
+                .on('sessionDisconnected', this._sessionDisconnected, this)
+                .on('streamCreated', this._streamCreated, this)
+                .on('streamDestroyed', this._streamDestroyed, this);
+
+    this.publisher = OT.initPublisher(this.$publisher[0], this._videoProperties);
+    this.publisher.on('accessAllowed', this._publisherAllowed, this)
+                  .on('accessDenied', this._publisherDenied, this);
+
+    this.$closeButton.on('click', this.close.bind(this));
+    this.$panel.show();
+    this.$waitingHardwareAccess.show();
+
+    this.emit('open');
+    // TODO: install a function that stops user from navigating away
+  };
+
+  ServicePanel.prototype.close = function() {
+    if (this.connected) {
+      this.session.disconnect();
+    } else {
+      this._cleanUp();
     }
+  };
+
+  ServicePanel.prototype._cleanUp = function() {
+    this.$waitingHardwareAccess.hide();
+    this.$waitingRepresentative.hide();
+    this.$closeButton.off().text('Cancel');
+
+    this.session.off();
+    this.publisher.off();
+
+    if (this.queueId) {
+      // TODO: dequeue
+      console.log('dequeue');
+    }
+
+    this.$panel.hide();
+    this.emit('close');
   };
 
   ServicePanel.prototype._publisherAllowed = function() {
@@ -164,7 +201,10 @@
 
   ServicePanel.prototype._sessionConnected = function() {
     var self = this;
+
+    this.connected = true;
     this.session.publish(this.publisher);
+
     $.post('/help/queue', { session_id: this.sessionId }, 'json')
       .done(function(data) {
         // TODO: install a synchronous http request to remove from queue in case the page is
@@ -177,45 +217,64 @@
       });
   };
 
-  ServicePanel.prototype._streamCreated = function() {
-    // TODO: subscribe
-    // TODO: change cancel button to end button
-    this.$waitingRepresentative.hide();
+  ServicePanel.prototype._sessionDisconnected = function() {
+    this.connected = false;
+    this._cleanUp();
   };
 
-  // TODO: call disconnect and then handle the rest in the session disconnected handler
-  // but its possible they never attempted to connect to the session, then what? call
-  // sessionDisconnected directly?
-  ServicePanel.prototype.cancel = function() {
-    this.publisher.destroy();
-    this.$panel.hide();
-    this.$waitingHardwareAccess.hide();
-    this.$waitingRepresentative.hide();
-    if (this.queueId) {
-      // TODO: dequeue
-      console.log('dequeue');
+  ServicePanel.prototype._streamCreated = function(event) {
+    if (!this.subscriber) {
+      this.subscriber = this.session.subscribe(event.stream,
+                                               this.$subscriber[0],
+                                               this._videoProperties);
+      this.$closeButton.text('End');
+      this.$waitingRepresentative.hide();
       this.queueId = undefined;
     }
-
-    this.emit('close');
   };
 
-  ServicePanel.prototype.initialize = function() {
-    this.session = OT.initSession(this.apiKey, this.sessionId);
-    this.session.on('sessionConnected', this._sessionConnected, this)
-                .on('streamCreated', this._streamCreated, this);
-
-    this.publisher = OT.initPublisher(this.$publisher[0], this._videoProperties);
-    this.publisher.on('accessAllowed', this._publisherAllowed, this)
-                  .on('accessDenied', this._publisherDenied, this);
-
-    this.$cancelButton.on('click', this.cancel.bind(this));
-    this.$panel.show();
-    this.$waitingHardwareAccess.show();
-
-    this.emit('open');
-    // TODO: install a function that stops user from navigating away
+  ServicePanel.prototype._streamDestroyed = function(event) {
+    if (this.subscriber && event.stream === this.subscriber.stream) {
+      this.close();
+    }
   };
+
+  ServicePanel.prototype._videoProperties = {
+    insertMode: 'append',
+    width: '100%',
+    height: '100%',
+    style: {
+      buttonDisplayMode: 'off'
+    }
+  };
+
+
+
+  // Page level interactions
+  //
+  // Hooks up the button on the page to interacting with the Service Request as well as initializing
+  // and tearing down a Service Panel instance
+  $(doc).ready(function() {
+    $serviceRequestButton = $('.service-request-btn');
+
+    serviceRequest.init('#service-request-modal', function(serviceSessionData) {
+      // Initialize a Service Panel instance
+      servicePanel = new ServicePanel('#service-panel', serviceSessionData);
+
+      // Make sure the user cannot attempt to open another Service Panel
+      servicePanel.on('open', disableServiceRequest);
+
+      // Make sure that the instance gets torn down and UI is renabled when the Service Panel is
+      // closed
+      servicePanel.on('close', function() {
+        enableServiceRequest();
+        servicePanel.removeAllListeners();
+        servicePanel = undefined;
+      });
+    });
+  });
+
+  // Page level helper methods
 
   var disableServiceRequest = function() {
     $serviceRequestButton.prop('disabled', true);
@@ -225,19 +284,5 @@
     $serviceRequestButton.prop('disabled', false);
   };
 
-  $(doc).ready(function() {
-    $serviceRequestButton = $('.service-request-btn');
-    serviceRequest.init('#service-request-modal', function(serviceSessionData) {
-      servicePanel = new ServicePanel('#service-panel', serviceSessionData);
-      servicePanel.on('open', disableServiceRequest);
-      servicePanel.on('close', function() {
-        enableServiceRequest();
-        servicePanel.removeAllListeners();
-        servicePanel = undefined;
-      });
-    });
-  });
-
-  OT.setLogLevel(OT.DEBUG);
 
 }(window, window.document, jQuery, _, EventEmitter2, setImmediate, OT));

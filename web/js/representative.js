@@ -222,7 +222,6 @@
 
     var sessionDisconnected = function() {
       connected = false;
-      subscriber.off();
       subscriber = undefined;
       session.off();
       session = undefined;

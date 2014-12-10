@@ -92,7 +92,7 @@
         <div class="subscriber"></div>
         <div class="publisher"></div>
         <div class="bottom-bar">
-            <button type="button" class="btn btn-danger cancel-button">Cancel</button>
+            <button type="button" class="btn btn-danger close-button">Cancel</button>
         </div>
         <div class="waiting">
             <p class="hardware-access">Please allow access to your camera and mic.</p>
