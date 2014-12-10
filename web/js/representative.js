@@ -131,7 +131,8 @@
 
   // Service Provider
   var serviceProvider = (function() {
-    var $el, $publisher, $subscriber, $getCustomer, $endCall, session, publisher, subscriber, connected;
+    var $el, $publisher, $subscriber, $getCustomer, $endCall, $customerName, $problemText,
+      session, publisher, subscriber, connected;
 
     var init = function(selector) {
       $el = $(selector);
@@ -139,6 +140,8 @@
       $subscriber = $el.find('.subscriber');
       $getCustomer = $el.find('.get-customer');
       $endCall = $el.find('.end-call');
+      $customerName = $el.find('.customer-name');
+      $problemText = $el.find('.problem-text');
 
       $getCustomer.on('click', getCustomer);
       $endCall.on('click', endCall);
@@ -149,24 +152,22 @@
       publisher = pub;
       publisher.on('streamDestroyed', function(event) {
         event.preventDefault();
-        console.log('Publisher stopped streaming.');
       });
     };
 
     var getCustomer = function() {
+
       $getCustomer.prop('disabled', true);
-      console.log('requesting customer');
+
       $.post('/help/queue', dequeueData, 'json')
         .done(function(customerData, textStatus, jqXHR) {
+
+          // When there is a customer available, begin chat
           if (jqXHR.status === 200) {
-            console.log('customer matched');
-            // When there is a customer available, begin chat
-            renderCustomer(customerData);
             beginCall(customerData);
 
+          // When there isn't a customer available, poll
           } else if (jqXHR.status === 204) {
-            console.log('no customer, will poll');
-            // When there isn't a customer available, poll
             setTimeout(getCustomer, pollingInterval);
           }
         })
@@ -176,20 +177,26 @@
     };
 
     var renderCustomer = function(customerData) {
-      console.log('rendering customer name: ' + customerData.customerName);
-      console.log('rendering problem text: ' + customerData.problemText);
-      // TODO templating
+      // templating
+      $customerName.text(customerData.customerName);
+      $problemText.text(customerData.problemText);
+
       $getCustomer.hide();
       $endCall.show();
     };
 
     var clearCustomer = function() {
-      // TODO: cleanup templated data
+      // cleanup templated data
+      $customerName.text('');
+      $problemText.text('');
+
       $getCustomer.show().prop('disabled', false);
       $endCall.hide();
     };
 
     var beginCall = function(customerData) {
+      renderCustomer(customerData);
+
       session = OT.initSession(customerData.apiKey, customerData.sessionId);
       session.on('sessionConnected', sessionConnected);
       session.on('sessionDisconnected', sessionDisconnected);
@@ -209,13 +216,11 @@
 
     var sessionConnected = function() {
       // TODO: start a timer within which to wait for the customer's stream to be created
-      console.log('session connected');
       connected = true;
       session.publish(publisher);
     };
 
     var sessionDisconnected = function() {
-      console.log('session disconnected');
       connected = false;
       subscriber.off();
       subscriber = undefined;

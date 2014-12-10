@@ -50,9 +50,9 @@
                     <div class="panel-body">
                         <dl class="dl-horizontal customer-info">
                             <dt>Customer Name</dt>
-                            <dd>Johnny Appleseed</dd>
+                            <dd class="customer-name"></dd>
                             <dt>Problem Description</dt>
-                            <dd>blah blah blah blah blah blah blah blah blah blah blah blah blah blah blah blah blah blah blah blah blah blah blah blah blah blah blah blah blah blah blah blah blah blah blah blah blah blah blah blah</dd>
+                            <dd class="problem-text"></dd>
                         </dl>
                     </div>
                 </div>
