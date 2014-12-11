@@ -8,13 +8,12 @@ An OpenTok Starter Kit for creating a customer service application.
 
 2. Copy the `config/development/opentok.php.sample` file to `config/development/opentok.php` and
    replace the `key` and `secret` settings with your OpenTok API key and secret, from the [TokBox
-   Dashboard](https://dashboard.tokbox.com). Also, generate one relayed session (you may use the
-   Project Tools in the Dashboard) and use the Session ID to replace the`presenceSession` setting.
+   Dashboard](https://dashboard.tokbox.com).
 
 3. Copy the `config/development/memcached.php.sample` file to `config/development/memcached.php`
    and replace the `pool` setting to a [Memcached](http://memcached.org/) instance. The format
-   for this string is `<host>:<port>(,<host>:<port>)*`. If the instance requires authentication,
-   you should also set the `username` and `password` settings.
+   for this string is `<host>:<port>`. If the instance requires authentication, you should also
+   set the `username` and `password` settings.
 
 4. Use [Composer](https://getcomposer.org/) to install dependencies: `composer install`
 
@@ -34,8 +33,8 @@ An OpenTok Starter Kit for creating a customer service application.
 3. Have another user (possibly in another window or tab) visit the `/rep` page on the same server.
    This is the representative's page.
 
-4. The representative will immediately be prompted for a name. The submitting the form also
-   requires allowing access to the camera and microphone.
+4. The representative will immediately be prompted for a name. Submitting the form also requires
+   allowing access to the camera and microphone.
 
 5. In order to start a chat with the customer, the representative will need to click on the "Next
    Customer" button. The first customer who successfully requested the representative will be
