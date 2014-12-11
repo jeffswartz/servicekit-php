@@ -132,7 +132,7 @@
   // Service Provider
   var serviceProvider = (function() {
     var $el, $publisher, $subscriber, $getCustomer, $endCall, $customerName, $problemText,
-      session, publisher, subscriber, connected;
+      session, publisher, subscriber, connected, waitingForCustomer;
 
     var init = function(selector) {
       $el = $(selector);
@@ -215,9 +215,21 @@
       }
     };
 
+    var waitForCustomerExpired = function() {
+      if (waitingForCustomer) {
+        waitingForCustomer = false;
+        // TODO: let the user know the reason this customer is being skipped is because they left
+        endCall();
+      }
+    };
+
     var sessionConnected = function() {
-      // TODO: start a timer within which to wait for the customer's stream to be created
+      //start a timer within which to wait for the customer's stream to be created
+      waitingForCustomer = true;
+      setTimeout(waitForCustomerExpired, customerWaitExpirationInterval);
+
       connected = true;
+
       session.publish(publisher);
     };
 
@@ -231,6 +243,7 @@
 
     var streamCreated = function(event) {
       if (!subscriber) {
+        waitingForCustomer = false;
         subscriber = session.subscribe(event.stream, $subscriber[0], videoProperties);
       }
     };
@@ -258,6 +271,7 @@
     };
 
     var pollingInterval = 5000;
+    var customerWaitExpirationInterval = 5000;
 
     var dequeueData = '_METHOD=DELETE';
 
