@@ -4,7 +4,8 @@
 /* global jQuery, _, EventEmitter2, setImmediate, OT */
 
 // Prevent leaking into global scope
-!(function(exports, doc, $, _, EventEmitter, setImmediate, OT, undefined) {
+!(function(exports, doc, $, _, EventEmitter, setImmediate, presentAlert, validateForm, OT,
+           undefined) {
 
   // State
   var servicePanel,
@@ -39,7 +40,7 @@
 
       disableFields();
 
-      if (validateForm() === false) {
+      if (validateForm($form, validationRequirements) === false) {
         enableFields();
         return;
       }
@@ -54,8 +55,7 @@
           $modal.modal('hide');
         })
         .fail(function() {
-          // TODO: error handling
-          // show a flash message that says the request failed, try again later
+          presentAlert('Request failed. Try again later.', 'danger', $form.parent(), false);
         })
         .always(function() {
           enableFields();
@@ -64,37 +64,6 @@
 
     var modalHidden = function() {
       $form[0].reset();
-    };
-
-    var validateForm = function() {
-      var result = true;
-      $form.find('.has-error').removeClass('has-error');
-      $form.find('.validation-error').remove();
-      _.each(validationRequirements, function(requirements, selector) {
-        var $element = $form.find(selector);
-        var $formGroup = $element.parents('.form-group');
-        var value = $element.val();
-        if (_.has(requirements, 'maxLength')) {
-          if (value.length > requirements.maxLength) {
-            $formGroup.addClass('has-error');
-            $formGroup.append(
-              '<span class="help-block validation-error">The maximum length is ' +
-              requirements.maxLength + '</span>'
-            );
-            result = false;
-          }
-        }
-        if (_.has(requirements, 'required')) {
-          if (!value) {
-            $formGroup.addClass('has-error');
-            $formGroup.append(
-              '<span class="help-block validation-error">This field is required</span>'
-            );
-            result = false;
-          }
-        }
-      });
-      return result;
     };
 
     var validationRequirements = {
@@ -214,7 +183,9 @@
   };
 
   ServicePanel.prototype._publisherDenied = function() {
-    // TODO: prompt user to reset their denial of the camera and try again
+    presentAlert('Camera access denied. Please reset the setting in your browser and try again.',
+                 'danger');
+    this.close();
   };
 
   ServicePanel.prototype._sessionConnected = function() {
@@ -232,8 +203,8 @@
         exports.onbeforeunload = self._dequeue.bind(self);
       })
       .fail(function() {
-        // TODO: error handling
-        // show a flash message that says the request failed, try again later
+        presentAlert('Could not join the queue at this time. Try again later.', 'warning');
+        self.close();
       });
   };
 
@@ -311,4 +282,5 @@
   };
 
 
-}(window, window.document, jQuery, _, EventEmitter2, setImmediate, OT));
+}(window, window.document, jQuery, _, EventEmitter2, setImmediate, window.presentAlert,
+  window.validateForm, OT));

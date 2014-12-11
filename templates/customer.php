@@ -106,6 +106,7 @@
     <script src="//static.opentok.com/webrtc/v2.2/js/opentok.min.js"></script>
     <script src="/js/vendor/setImmediate.js"></script>
     <script src="/js/vendor/eventemitter2.js"></script>
+    <script src="/js/utils.js"></script>
     <script src="/js/customer.js"></script>
 </body>
 </html>

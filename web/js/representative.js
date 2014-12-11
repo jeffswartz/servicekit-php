@@ -4,7 +4,8 @@
 /* global jQuery, _, setImmediate, OT */
 
 // Prevent leaking into global scope
-!(function(exports, doc, $, _, setImmediate, OT, undefined) {
+!(function(exports, doc, $, _, setImmediate, setTimeout, presentAlert, validateForm, OT,
+           undefined) {
 
   // Service Provider Login
   var serviceProviderLogin = (function() {
@@ -43,7 +44,7 @@
 
       disableFields();
 
-      if (!publisher.accessAllowed || validateForm() === false) {
+      if (!publisher.accessAllowed || validateForm($form, validationRequirements) === false) {
         enableFields();
         return;
       }
@@ -76,37 +77,6 @@
       $accessInfo.show();
       $accessSuccess.hide();
       $accessError.hide();
-    };
-
-    var validateForm = function() {
-      var result = true;
-      $form.find('.has-error').removeClass('has-error');
-      $form.find('.validation-error').remove();
-      _.each(validationRequirements, function(requirements, selector) {
-        var $element = $form.find(selector);
-        var $formGroup = $element.parents('.form-group');
-        var value = $element.val();
-        if (_.has(requirements, 'maxLength')) {
-          if (value.length > requirements.maxLength) {
-            $formGroup.addClass('has-error');
-            $formGroup.append(
-              '<span class="help-block validation-error">The maximum length is ' +
-              requirements.maxLength + '</span>'
-            );
-            result = false;
-          }
-        }
-        if (_.has(requirements, 'required')) {
-          if (!value) {
-            $formGroup.addClass('has-error');
-            $formGroup.append(
-              '<span class="help-block validation-error">This field is required</span>'
-            );
-            result = false;
-          }
-        }
-      });
-      return result;
     };
 
     var validationRequirements = {
@@ -172,8 +142,8 @@
           }
         })
         .fail(function() {
-          // TODO: error handling
-          // prompt user, re enable the get customer button
+          presentAlert('Queue error. Try again later.', 'danger');
+          clearCustomer();
         });
     };
 
@@ -218,7 +188,7 @@
     var waitForCustomerExpired = function() {
       if (waitingForCustomer) {
         waitingForCustomer = false;
-        // TODO: let the user know the reason this customer is being skipped is because they left
+        presentAlert('The customer is being skipped because he/she failed to connect in time.');
         endCall();
       }
     };
@@ -292,4 +262,5 @@
     );
   });
 
-}(window, window.document, jQuery, _, setImmediate, OT));
+}(window, window.document, jQuery, _, setImmediate, window.setTimeout, window.presentAlert,
+  window.validateForm, OT));

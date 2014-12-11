@@ -74,7 +74,7 @@
                             <input type="text" class="form-control representative-name" name="representative_name" required="required">
                         </div>
                     </form>
-                    <div class="alert alert-info access-info" role="alert">Please allow access to your camera and mic before logging in.</div>
+                    <div class="alert alert-warning access-info" role="alert">Please <strong>allow access to your camera and mic</strong> before logging in.</div>
                     <div class="alert alert-success access-success" role="alert">Your camera and mic are accessible.</div>
                     <div class="alert alert-danger access-error" role="alert">Your camera and mic were denied. Please revert the choice and retry.</div>
                 </div>
@@ -89,6 +89,7 @@
     <script src="//cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.1/js/bootstrap.min.js"></script>
     <script src="//static.opentok.com/webrtc/v2.2/js/opentok.min.js"></script>
     <script src="/js/vendor/setImmediate.js"></script>
+    <script src="/js/utils.js"></script>
     <script src="/js/representative.js"></script>
 </body>
 </html>
