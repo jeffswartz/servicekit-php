@@ -19,5 +19,8 @@
         "werx/config": "~1.0",
         "php": ">=5.3.2",
         "ext-memcached": "*"
+    },
+    "require-dev": {
+        "heroku/heroku-buildpack-php": "*"
     }
 }
