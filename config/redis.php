@@ -9,5 +9,6 @@
 return array(
   'host' => parse_url($_ENV['REDISCLOUD_URL'], PHP_URL_HOST),
   'port' => parse_url($_ENV['REDISCLOUD_URL'], PHP_URL_PORT),
-  'password' => parse_url($_ENV['REDISCLOUD_URL'], PHP_URL_PASS)
+  'password' => parse_url($_ENV['REDISCLOUD_URL'], PHP_URL_PASS),
+  'prefix' => 'servicekit'
 );

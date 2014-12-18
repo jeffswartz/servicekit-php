@@ -10,12 +10,12 @@ An OpenTok Starter Kit for creating a customer service application.
    replace the `key` and `secret` settings with your OpenTok API key and secret, from the [TokBox
    Dashboard](https://dashboard.tokbox.com).
 
-3. Copy the `config/development/memcached.php.sample` file to `config/development/memcached.php`
-   and replace the `pool` setting to a [Memcached](http://memcached.org/) instance. The format
-   for this string is `<host>:<port>`. If the instance requires authentication, you should also
-   set the `username` and `password` settings.
+3. Copy the `config/development/redis.php.sample` file to `config/development/redis.php`
+   and replace the `host` and `port` settings to a [Redis](http://redis.io/) instance. If the 
+   instance requires authentication, you should also set the `password` setting.
 
-4. Use [Composer](https://getcomposer.org/) to install dependencies: `composer install`
+4. Use [Composer](https://getcomposer.org/)(included) to install dependencies:
+   `./composer.phar install`
 
 5. Set the document root for your web server (such as Apache, nginx, etc.) to the `web` directory
    of this project. In the case of Apache, the provided `web\.htaccess` file handles URL rewriting.
@@ -69,8 +69,7 @@ An OpenTok Starter Kit for creating a customer service application.
 ## Requirements
 
 *  PHP 5.3 or greater
-*  libmemcached and the php memcached extension installed.
-*  Memcached
+*  Redis 2.0 or greater
 
 ## Next steps
 
@@ -85,8 +84,8 @@ for free. For that reason, you may choose to experiment with this code and deplo
 
 *  The provided `Procfile` describes a web process which can launch this application.
 
-*  Provision the [MemcachedCloud addon](https://addons.heroku.com/memcachedcloud). It is free for
-   up to 25MB of data. Its configuration will be set for you automatically upon provisioning the
+*  Provision the [RedisToGo addon](https://addons.heroku.com/redistogo). It is free for
+   up to 5MB of data. Its configuration will be set for you automatically upon provisioning the
    service.
 
 *  Use Heroku config to set the following keys:
