@@ -7,8 +7,8 @@
  * -----------------------------------------------------------------------------------------------*/
 
 return array(
-  'host' => parse_url(getenv('REDISCLOUD_URL'), PHP_URL_HOST),
-  'port' => parse_url(getenv('REDISCLOUD_URL'), PHP_URL_PORT),
-  'password' => parse_url(getenv('REDISCLOUD_URL'), PHP_URL_PASS),
+  'host' => parse_url(getenv('REDISTOGO_URL'), PHP_URL_HOST),
+  'port' => parse_url(getenv('REDISTOGO_URL'), PHP_URL_PORT),
+  'password' => parse_url(getenv('REDISTOGO_URL'), PHP_URL_PASS),
   'prefix' => 'servicekit'
 );
