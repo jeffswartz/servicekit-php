@@ -18,7 +18,8 @@
         "slim/slim": "~2.4",
         "werx/config": "~1.0",
         "php": ">=5.3.2",
-        "ext-memcached": "*"
+        "ext-memcached": "*",
+        "predis/predis": "~1.0"
     },
     "require-dev": {
         "heroku/heroku-buildpack-php": "*"

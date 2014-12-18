@@ -8,9 +8,7 @@ use \Slim\Slim;
 use \OpenTok\OpenTok;
 use \werx\Config\Providers\ArrayProvider;
 use \werx\Config\Container;
-use \ServiceKit\MemcachedFactory;
-use \ServiceKit\MemQueue;
-use \ServiceKit\HelpSession;
+use \Predis\Response\ErrorInterface as RedisErrorInterface;
 
 /* ------------------------------------------------------------------------------------------------
  * Slim Application Initialization
@@ -31,7 +29,7 @@ $app->configureMode('development', function () use ($config) {
     $config->setEnvironment('development');
 });
 
-$config->load(array('opentok', 'memcached'), true);
+$config->load(array('opentok', 'redis'), true);
 
 /* ------------------------------------------------------------------------------------------------
  * OpenTok Initialization
@@ -39,10 +37,11 @@ $config->load(array('opentok', 'memcached'), true);
 $opentok = new OpenTok($config->opentok('key'), $config->opentok('secret'));
 
 /* ------------------------------------------------------------------------------------------------
- * Memcached Initialization
+ * Redis Initialization
  * -----------------------------------------------------------------------------------------------*/
-MemcachedFactory::configureFactory($config->memcached());
-$helpQueue = new MemQueue('helpQueue');
+$redis = new \Predis\Client($config->redis(), array('prefix' => 'servicekit:'));
+// TODO: helper function for returning errors (response is not a good name everywhere)
+// TODO: constants for key prefixes and key constants
 
 /* ------------------------------------------------------------------------------------------------
  * Routing
@@ -69,7 +68,7 @@ $app->get('/rep', function () use ($app) {
 //    *  `apiKey`: OpenTok API Key
 //    *  `sessionId`: OpenTok session ID
 //    *  `token`: User's token for the `sessionId`
-$app->post('/help/session', function () use ($app, $opentok, $config) {
+$app->post('/help/session', function () use ($app, $opentok, $redis, $config) {
 
     $customerName = $app->request->params('customer_name');
     $problemText = $app->request->params('problem_text');
@@ -98,10 +97,16 @@ $app->post('/help/session', function () use ($app, $opentok, $config) {
         'token' => $session->generateToken()
     );
 
-    $success = HelpSession::create($session->getSessionId(), $customerName, $problemText);
-    if ($success == false) {
+    // Save the help session details
+    $response = $redis->hmset('helpsession:'.$session->getSessionId(),
+        'customerName', $customerName,
+        'problemText', $problemText,
+        'sessionId', $session->getSessionId()
+    );
+    // Handle errors
+    if ($response instanceof RedisErrorInterface) {
         $app->response->setStatus(500);
-        $app->response->setBody('Could not create the help session');
+        $app->response->setBody('Could not create the help session\n' . (string)$response);
         return;
     }
 
@@ -115,25 +120,35 @@ $app->post('/help/session', function () use ($app, $opentok, $config) {
 //
 //    Response: (JSON encoded)
 //    *  `queueId`: An identifier for the session's position in the queue
-$app->post('/help/queue', function () use ($app, $helpQueue) {
+$app->post('/help/queue', function () use ($app, $redis) {
 
     $sessionId = $app->request->params('session_id');
 
+    $helpSessionKey = 'helpsession:'.$sessionId;
+
     // Validation
-    // Check to see that the sessionId exists
-    $helpSession = HelpSession::findBySessionId($sessionId);
-    if ($helpSession == false) {
+    // Check to see that the help session exists
+    $response = $redis->exists($helpSessionKey);
+    if ($response instanceof RedisErrorInterface) {
+        $app->response->setStatus(500);
+        $app->response->setBody('Could not check for existence of help session.\n' . (string)$response);
+        return;
+    }
+    $exists = (bool)$response;
+    if (!$exists) {
         $app->response->setStatus(400);
         $app->response->setBody('An invalid session_id was given.');
         return;
     }
 
-    $queueId = $helpQueue->enqueue($helpSession->getSessionId());
-    if ($queueId == false) {
+    // Add the help session to the queue
+    $response = $redis->rpush('helpqueue', $helpSessionKey);
+    if ($response instanceof RedisErrorInterface) {
         $app->response->setStatus(500);
-        $app->response->setBody('The help session could not be enqueued');
+        $app->response->setBody('Could not add help session to the help queue.\n' . (string)$response);
         return;
     }
+    $queueId = $helpSessionKey;
 
     $responseData = array(
         'queueId' => $queueId
@@ -160,54 +175,77 @@ $app->post('/help/queue', function () use ($app, $helpQueue) {
 // NOTE: This request allows anonymous access, but if user authentication is required then the 
 // identity of the request should be verified (often times with session cookies) before a valid 
 // response is given.
-$app->delete('/help/queue', function () use ($app, $helpQueue, $opentok, $config) {
-    $helpSessionId = $helpQueue->dequeue();
+$app->delete('/help/queue', function () use ($app, $redis, $opentok, $config) {
 
-    if ($helpSessionId) {
+    // Dequeue the next help session
+    $response = $redis->lpop('helpqueue');
+    if ($response instanceof RedisErrorInterface) {
+        $app->response->setStatus(500);
+        $app->response->setBody('Could not dequeue a help session from the help queue.\n' . (string)$response);
+        return;
+    }
+    $helpSessionKey = $response;
 
-        $helpSession = HelpSession::findBySessionId($helpSessionId);
-        if ($helpSession == false) {
+    // TODO: check what the return of nil looks like when the queue is empty
+    if (empty($helpSessionKey)) {
+
+        // The queue was empty
+        $app->response->setStatus(204);
+
+    } else {
+
+        $response = $redis->hgetall($helpSessionKey);
+        if ($response instanceof RedisErrorInterface) {
             $app->response->setStatus(500);
-            $app->response->setBody('The queue is in an invalid state.');
+            $app->response->setBody('Could not read the help session.\n' . (string)$response);
             return;
         }
+        $helpSessionData = $response;
 
         $responseData = array(
             'apiKey' => $config->opentok('key'),
-            'sessionId' => $helpSession->getSessionId(),
-            'token' => $opentok->generateToken($helpSession->getSessionId()),
-            'customerName' => $helpSession->getCustomerName(),
-            'problemText' => $helpSession->getProblemText()
+            'sessionId' => $helpSessionData['sessionId'],
+            'token' => $opentok->generateToken($helpSessionData['sessionId']),
+            'customerName' => $helpSessionData['customerName'],
+            'problemText' => $helpSessionData['problemText']
         );
 
         // Once the help session is dequeued, we also clean it out of the storage.
         // If keeping the history of this help session is important, we could mark it as dequeued 
         // instead. If we had authentication for the representative, then we could also mark the 
         // help session with the identity of the representative.
-        $success = HelpSession::deleteBySessionId($helpSession->getSessionId());
-        if ($success == false) {
+        $response = $redis->del($helpSessionKey);
+        if ($response instanceof RedisErrorInterface) {
             $app->response->setStatus(500);
-            $app->response->setBody('The help session was dequeued but could not be deleted');
+            $app->response->setBody('Could not delete the help session after dequeuing.\n' . (string)$response);
             return;
         }
 
         $app->response->headers->set('Content-Type', 'application/json');
         $app->response->setBody(json_encode($responseData));
 
-    } else {
-        $app->response->setStatus(204);
     }
 });
 
 // Customer dequeues by cancelling or leaving the page
 //
 // Dequeue the specific help session from the help queue.
-$app->delete('/help/queue/:queueId', function ($queueId) use ($app, $helpQueue) {
-    $success = $helpQueue->delete($queueId);
-    if ($success == false) {
+$app->delete('/help/queue/:queueId', function ($queueId) use ($app, $redis) {
+    $response = $redis->lrem('helpqueue', 0, $queueId);
+    if ($response instanceof RedisErrorInterface) {
         $app->response->setStatus(500);
+        $app->response->setBody('Could not remove the help session from the queue.\n' . (string)$response);
         return;
     }
+
+    $helpSessionKey = $queueId;
+    $response = $redis->del($helpSessionKey);
+    if ($response instanceof RedisErrorInterface) {
+        $app->response->setStatus(500);
+        $app->response->setBody('Could not delete the help session after removing from queue.\n' . (string)$response);
+        return;
+    }
+
     $app->response->setStatus(204);
 });
 

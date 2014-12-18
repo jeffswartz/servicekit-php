@@ -1,0 +1,13 @@
+<?php
+/* -----------------------------------------------------------------------------------------------
+ * Redis Development Configuration (Sample)
+ *
+ * This file is meant to be copied without the ".sample" file extension but in the same directory.
+ * After copying, replace the values below with your own values.
+ * -----------------------------------------------------------------------------------------------*/
+
+return array(
+  'host' => '127.0.0.1',
+  'port' => 6379,
+  'password' => null
+);
