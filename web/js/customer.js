@@ -179,7 +179,12 @@
   ServicePanel.prototype._publisherAllowed = function() {
     this.$waitingHardwareAccess.hide();
     this.$waitingRepresentative.show();
-    this.session.connect(this.token);
+    this.session.connect(this.token, function(err) {
+      // Handle connect failed
+      if (err && err.code === 1006) {
+        console.log('Connecting to the session failed. Try connecting to this session again.');
+      }
+    });
   };
 
   ServicePanel.prototype._publisherDenied = function() {
@@ -192,7 +197,13 @@
     var self = this;
 
     this.connected = true;
-    this.session.publish(this.publisher);
+    this.session.publish(this.publisher, function(err) {
+      // Handle publisher failing to connect
+      if (err && err.code === 1013) {
+        console.log('The publisher failed to connect.');
+        self.close();
+      }
+    });
 
     // Once the camera and mic are accessible and the session is connected, join the queue
     $.post('/help/queue', { 'session_id' : this.sessionId }, 'json')
@@ -218,7 +229,13 @@
     if (!this.subscriber) {
       this.subscriber = this.session.subscribe(event.stream,
                                                this.$subscriber[0],
-                                               this._videoProperties);
+                                               this._videoProperties,
+                                               function(err) {
+        // Handle subscriber error
+        if (err && err.code === 1600) {
+          console.log('An internal error occurred. Try subscribing to this stream again.');
+        }
+      });
       this.$closeButton.text('End');
       this.$waitingRepresentative.hide();
 

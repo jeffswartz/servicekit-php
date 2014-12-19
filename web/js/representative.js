@@ -173,7 +173,12 @@
       session.on('sessionDisconnected', sessionDisconnected);
       session.on('streamCreated', streamCreated);
       session.on('streamDestroyed', streamDestroyed);
-      session.connect(customerData.token);
+      session.connect(customerData.token, function(err) {
+        // Handle connect failed
+        if (err && err.code === 1006) {
+          console.log('Connecting to the session failed. Try connecting to this session again.');
+        }
+      });
     };
 
     var endCall = function() {
@@ -200,7 +205,13 @@
 
       connected = true;
 
-      session.publish(publisher);
+      session.publish(publisher, function(err) {
+        // Handle publisher failing to connect
+        if (err && err.code === 1013) {
+          console.log('The publisher failed to connect.');
+          endCall();
+        }
+      });
     };
 
     var sessionDisconnected = function() {
@@ -214,7 +225,13 @@
     var streamCreated = function(event) {
       if (!subscriber) {
         waitingForCustomer = false;
-        subscriber = session.subscribe(event.stream, $subscriber[0], videoProperties);
+        subscriber = session.subscribe(event.stream, $subscriber[0], videoProperties,
+                                       function(err) {
+          // Handle subscriber error
+          if (err && err.code === 1600) {
+            console.log('An internal error occurred. Try subscribing to this stream again.');
+          }
+        });
       }
     };
 
