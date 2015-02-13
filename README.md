@@ -1,6 +1,8 @@
-# OpenTok Service Kit
+# OpenTok Service Kit 
 
 An OpenTok Starter Kit for creating a customer service application.
+
+[![Deploy](https://www.herokucdn.com/deploy/button.png)](https://heroku.com/deploy)
 
 ## Installation
 
@@ -243,6 +245,10 @@ Here are some other customizations that you may consider adding to the app:
 
 Heroku is a PaaS (Platform as a Service) that can be used to deploy simple and small applications
 for free. For that reason, you may choose to experiment with this code and deploy it using Heroku.
+
+Use the button at the top of the README to deploy to Heroku in one click!
+
+If you'd like to deploy manually, here is some additional information:
 
 *  The provided `Procfile` describes a web process which can launch this application.
 
