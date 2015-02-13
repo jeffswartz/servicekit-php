@@ -13,8 +13,8 @@
 
   // Service Request
   //
-  // This object controls the interaction with modal and form that the user must fill before
-  // speaking to a representative.
+  // This object controls the interaction with the modal and its contained form that the user must
+  // fill before speaking to a representative.
   //
   // Using a module pattern to encapsulate the functionality. The object returned at the end of this
   // function presents the API for using this module. It is a singleton and can be reused.
