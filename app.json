@@ -1,0 +1,30 @@
+{
+  "name": "OpenTok ServiceKit PHP",
+  "description": "An OpenTok Starter Kit for creating a customer service application",
+  "keywords": [
+    "WebRTC",
+    "OpenTok",
+    "customer service",
+    "video",
+    "chat",
+    "communications",
+    "support",
+    "consultation"
+  ],
+  "website": "https://tokbox.com",
+  "repository": "https://github.com/opentok/servicekit-php",
+  "env": {
+    "OPENTOK_KEY": {
+      "description": "OpenTok API Key: Login to the TokBox Dashboard (https://dashboard.tokbox.com/keys) to get this value",
+      "required": true
+    },
+    "OPENTOK_SECRET": {
+      "description": "OpenTok API Secret: Login to the TokBox Dashboard (https://dashboard.tokbox.com/keys) to get this value",
+      "required": true
+    },
+    "SLIM_MODE": "production"
+  },
+  "addons": [
+    "redistogo"
+  ]
+}
