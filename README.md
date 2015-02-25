@@ -78,7 +78,7 @@ The server side code also uses [Redis](http://redis.io/) for persistence.
 ### Concepts
 
 There are two types of users in the Service Kit application: customers and representatives.
-Customers are users who initiate a request for communications. Representatives are users
+Customers are users who initiate a request for communications. Representatives are users who
 fulfill that request by responding to the request. There can be many customers and many
 representatives using the application at a given time. By default, the app matches each
 customer with a representative as soon as one is available.
@@ -127,8 +127,8 @@ its own handler in the Slim application:
    empty or not, and if it is then a 204 No Content response is sent. If not, then the reference to
    the help session (`queueId`) is popped from the queue. That reference is used to lookup the
    details of the help session from Redis. Those details include the customer name, the problem
-   details OpenTok session ID where the customer is waiting, as well as the API key and token needed
-   for the representative to connect. Just before responding to the representative with these
+   text, and the OpenTok session ID where the customer is waiting, as well as the API key and token
+   needed for the representative to connect. Just before responding to the representative with these
    details, the help session details are removed from the Redis store.
 
 *  `DELETE /help/queue/:queueId` -- When a customer decides to cancel or leave the help session, the
@@ -173,7 +173,7 @@ ends the session. The ServicePanel includes UI that tells the user to allow the 
 microphone and camera, it informs the user that a representative is being requested by showing a
 "Waiting" message, it allows the user to Cancel or End the help session, and it handles errors gracefully.
 
-#### Representative (web/js/customer.js)
+#### Representative (web/js/representative.js)
 
 ##### `serviceProviderLogin`
 
@@ -236,7 +236,7 @@ Here are some other customizations that you may consider adding to the app:
    than just the customer name and problem text. For example, you may want to store the
    representative who spoke to them, the product they were interested, etc. Redis is not typically
    used for permanent storage, so consider using a persistent store which is, such as MySQL,
-   MySQL, MongoDB, PostgreSQL, Microsoft SQL Server, etc.
+   MongoDB, PostgreSQL, Microsoft SQL Server, etc.
 
 *  Service metrics -- It may be important to your application to track other metrics related to the
    individual help sessions, such as call time, feedback/ratings, average requests for hours of the
