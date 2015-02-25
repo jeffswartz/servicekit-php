@@ -47,7 +47,7 @@ An OpenTok Starter Kit for creating a customer service application.
    no customers in line, the representative is connected when a new customer requests
    a representative.
 
-   If there is more than one representative online, each can be connected to different
+   If there is more than one customer online, each can be connected to different
    representatives. If there are more customers requesting a representative than there are available
    representatives, customers are added in a line and are connected to representatives as other
    calls end (or as new representatives join).
